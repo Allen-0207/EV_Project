@@ -1,0 +1,6 @@
+Flask==2.3.2
+pandas==2.0.3
+scipy==1.10.1
+geojsoncontour==0.4.0
+gevent==23.7.0
+requests==2.31.0

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Data</title>
+        
+        <link rel="stylesheet" href="static/css/screen.css"/>
+        <link rel="stylesheet" href="static/css/styles.css"/>
+        <link rel="stylesheet" href="static/css/tail.datetime-default-blue.css"/>
+        <link rel="stylesheet" href="static/css/jquery-ui.css"/>
+        <link rel="stylesheet" href="static/css/bootstrap.min.css"/>
+        <script src="static/js/jquery-3.6.0.min.js"></script>
+        <script src="static/js/jquery-ui.js"></script>
+        <script src="static/js/tail.datetime.js"></script>
+        <script src="static/js/tail.datetime-full.js"></script>
+        <script src="static/js/bootstrap.min.js"></script>
+    </head>
+
+    <body>
+        <nav class="navbar navbar-expand-lg fixed-top navbar-light shadow-sm bg-white">
+            <div class="container">
+                <a class="navbar-brand" href="/">Home</a>
+                <a class="navbar-brand" href="/data">Data</a>
+                <a class="navbar-brand" href="/setting">Setting</a>
+                <ul id="main_nav" class="nav nav-pills ms-auto">
+                </ul>
+            </div> 
+        </nav>
+
+        <div id="section_data" class="container-fluid">
+            <section id="nav_input" class="text-center">
+                <div id="input-body" class="container">
+                    <div class="row">
+                        <div class="col-sm">
+                            <h3 style="margin-bottom: 40px;">Data Online Viwer</h3>
+
+                            <form method='post' action="/api_download"> 
+                                <div class="form-floating m-3">
+                                    <select id = "sensorID" name="sensorID" class="form-select">
+                                        <option value="voc">voc</option>
+                                        <option value="pm2_5">pm2.5</option>
+                                        <option value="humidity">humidity</option>
+                                        <option value="temperature">temperature</option>
+                                        <option value="h2s">h2s</option>
+                                        <option value="nh3">nh3</option>
+                                    </select>
+                                    <label for="sensorID">Choose sensor:    </label>
+                                </div>
+                                <div class="form-floating m-3">
+                                    <input type="text" id="time_start" name="time_start" class="form-control">
+                                    <label for="time_start">Time frame start: </label>
+                                </div>
+                                <div class="form-floating m-3">
+                                    <input type="text" id="time_finish" name="time_finish" class="form-control">
+                                    <label for="time_finish">Time frame finish:</label>
+                                </div>
+                                <button type="submit" id="btn" class="btn btn-outline-dark">csv</button>
+                            </form>
+                            <button type="submit" id="btn" class="btn btn-outline-dark" onclick='Show()'>Show table</button>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+            </section>
+
+            <section class="align-items-center">
+                <style>
+                    table th, td {
+                       text-align: center; 
+                    }
+                </style>
+                <table id="data" style="margin:auto; width: 67%;" class="table table-condensed table-bordered table-hover table-striped align-middle">
+                </table>
+            </section>
+        </div>
+
+        <script src="static/js/data.js"></script>
+    </body>
+</html>
