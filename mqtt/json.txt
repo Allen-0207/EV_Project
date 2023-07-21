@@ -1,0 +1,31 @@
+{
+    'lat': 25.0107466, 
+    'lon': 121.4791583,
+    'time': '2021-05-29 20:48:06', 
+    'id': '355001096509756', 
+    'data': [{
+        '       value': 219, 
+                'unit': '', 
+                'sensor': 'voc'
+            }, {
+                'value': 14.53, 
+                'unit': 'µg/m3', 
+                'sensor': 'pm2_5'
+            }, {
+                'value': 71.13, 
+                'unit': '%', 
+                'sensor': 'humidity'
+            }, {
+                'value': 28.14, 
+                'unit': '℃', 
+                'sensor': 'temperature'
+            }, {
+                'value': 173, 
+                'unit': 'ppb', 
+                'sensor': 'h2s'
+            }, {
+                'value': 0,
+                'unit': 'ppb', 
+                'sensor': 'nh3'
+            }] 
+    }
