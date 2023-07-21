@@ -281,7 +281,7 @@ def get_data(sensor, time_start, time_finish, data_type="Bar"):
     except sqlite3.Error as error:
         print("sqlite3 Error : ", error)
 
-
+'''
 def crawler_sensor(sensor, time_start, time_finish, data_type="Bar"):
     username = 'wecc-pingtung'
     password = '27548312wecc'
@@ -337,6 +337,8 @@ def crawler_sensor(sensor, time_start, time_finish, data_type="Bar"):
         print("return error")
         data_list = {"type" : "error"}
         return data_list
+'''
+
 
 if __name__ == '__main__':
     app.run(host="127.0.0.1", port=8000, debug=True)
