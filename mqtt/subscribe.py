@@ -4,7 +4,6 @@ import sqlite3, json
 client = mqtt.Client()
 #client.connect("127.0.0.1", 1883)
 
-client.username_pw_set(username="wecc", password="abc123")
 client.connect("59.124.12.69", 1883)
 
 conn = sqlite3.connect('sensor.db')
