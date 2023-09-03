@@ -1,6 +1,8 @@
 from flask import *
 import pandas as pd
 from scipy.interpolate import griddata as gd
+from pykrige.ok import OrdinaryKriging
+from datetime import datetime, timedelta
 import geojsoncontour
 import numpy as np
 import matplotlib.pyplot as plt
@@ -33,41 +35,34 @@ def data():
 def setting():
     return render_template("setting.html")
 
+@app.route("/calculator")
+def calculator():
+    return render_template("calculator.html")
 
-@app.route("/api", methods=['POST'])
+
+@app.route("/api", methods=['GET'])
 def api():
-    if request.method == 'POST':
-        print(request.form)
-        graph_ = request.form['Graph']
-        time_start = request.form['Time_start']
-        time_finish = request.form['Time_finish']
-        sensor = request.form['Sensor_ID']
+    if request.method == 'GET':
+        # print(request.args)
         
-        #df = pd.read_excel('20210224.xlsx')
-        #print(time_start, time_finish)
+        # Get information
+        graph_ = request.args.get('Graph')
+        time_start = request.args.get('Time_start')
+        time_finish = request.args.get('Time_finish')
+        sensor = request.args.get('Sensor_ID')
 
         if(graph_ == "Bar"):
-            '''
-            data_dic = {}
-            data_list = []
-            for index, d in df.iterrows():
-                data_dic['Time'] = str(pd.to_datetime(d['Time'], format='%Y-%m-%d %H:%M:%S')).split('.')[0]
-                data_dic['PM25'] = d['PM25']
-                data_dic['lat'] = d['lat']
-                data_dic['lon'] = d['lon']
-                data_list.append(data_dic)
-                data_dic = {}
-            return json.dumps(data_list)
-            '''
-            #data_list = crawler_sensor(sensor, time_start, time_finish, data_type="Bar")
+            # Get data from database
             data_list, Max, Min = get_data(sensor, time_start, time_finish, data_type="Bar")
-
             return jsonify({"map_data" : data_list, "max" : Max, "min" : Min})
             
         elif(graph_ == "Contour"):
+            method = request.form['method']
             levels = request.form.getlist('levels[]')
-            print(levels)
-            x, y, z, Max, Min = get_data(sensor, time_start, time_finish, data_type="Contour")
+            slope = request.form['slope']
+            nugget = request.form['nugget']
+            #print(levels, slope, nugget)
+            x, y, z, Max, Min = get_data(sensor, time_start, time_finish, time_gap, data_type="Contour")
             
             '''
             #test data
@@ -75,15 +70,49 @@ def api():
             y = df["lon"].to_numpy()
             z = df["PM25"].to_numpy()
             '''
+            #print(x)
+            #print(y)
+            #print(z)
+
             try:
-                coor = np.vstack((x,y)).T
-                xi, yi = np.mgrid[x.min() - 0.0001:x.max() + 0.0001:50j, y.min() - 0.0001:y.max() + 0.0001:50j]
-                zi = gd(coor, z, (xi, yi), method='cubic')
-                ax = plt.figure().add_subplot(111)
-                if(levels == []):
-                    contour = ax.contour(yi, xi, zi, cmap=plt.cm.jet)
+
+                if(method == "Kriging"):
+                    if((x.max() - x.min()) > (y.max() - y.min())):
+                        gridx = np.linspace(x.min(), x.max(), num=100)
+                        gridy = np.linspace(y.min(), y.max(), num=int((y.max() - y.min()) / ((x.max() - x.min()) / 100)))
+                        #print((y.max() - y.min()) / ((x.max() - x.min()) / 100))
+                        
+                    else:
+                        gridx = np.linspace(x.min(), x.max(), num=int((x.max() - x.min()) / ((y.max() - y.min()) / 100)))
+                        gridy = np.linspace(y.min(), y.max(), num=100)
+                        #print((x.max() - x.min()) / ((y.max() - y.min()) / 100))
+
+                    OK = OrdinaryKriging(
+                        y, x, z,
+                        variogram_parameters=[slope,nugget],
+                        verbose=False,
+                        enable_plotting=False,
+                        pseudo_inv=True,
+                    )
+                    gridz, ss = OK.execute("grid", gridy, gridx)
+                    
+                    ax = plt.figure().add_subplot(111)
+                    if(levels == []):
+                        contour = ax.contour(gridy, gridx, gridz.data, cmap=plt.cm.jet)
+                    else:
+                        contour = ax.contour(gridy, gridx, gridz.data, levels=levels, cmap=plt.cm.jet)
+
                 else:
-                    contour = ax.contour(yi, xi, zi, levels=levels, cmap=plt.cm.jet)
+                    coor = np.vstack((x,y)).T
+                    xi, yi = np.mgrid[x.min() - 0.0001:x.max() + 0.0001:50j, y.min() - 0.0001:y.max() + 0.0001:50j]
+                    zi = gd(coor, z, (xi, yi), method='cubic')
+                    ax = plt.figure().add_subplot(111)
+                    if(levels == []):
+                        contour = ax.contour(yi, xi, zi, cmap=plt.cm.jet)
+                        
+                    else:
+                        contour = ax.contour(yi, xi, zi, levels=levels, cmap=plt.cm.jet)
+                
                 geojson = geojsoncontour.contour_to_geojson(contour=contour, unit='m', ndigits=100)
                 plt.close()
                 return jsonify({"map_data" : geojson, "max" : Max, "min" : Min})
@@ -101,6 +130,10 @@ def api_contour():
         x = request.form.getlist("Lat[]")
         y = request.form.getlist("Lon[]")
         z = request.form.getlist("Sensor[]")
+        levels = request.form.getlist('levels[]')
+        slope = request.form['slope']
+        nugget = request.form['nugget']
+        method = request.form['method']
         
         x =  np.array([float(x1) for x1 in x])
         y =  np.array([float(y1) for y1 in y])
@@ -108,50 +141,59 @@ def api_contour():
 
         Max = z.max()
         Min = z.min()
+        
+        #print(x)
+        #print(y)
+        #print(z)
 
         try:
-            coor = np.vstack((x,y)).T
-            xi, yi = np.mgrid[x.min() - 0.0001:x.max() + 0.0001:50j, y.min() - 0.0001:y.max() + 0.0001:50j]
-            zi = gd(coor, z, (xi, yi), method='cubic')
-            ax = plt.figure().add_subplot(111)
-            contour = ax.contour(yi, xi, zi, cmap=plt.cm.jet)
-            #ax.clabel(contour, inline=True, fontsize=8)
+            if(method == "Kriging"):
+                if((x.max() - x.min()) > (y.max() - y.min())):
+                    gridx = np.linspace(x.min(), x.max(), num=100)
+                    gridy = np.linspace(y.min(), y.max(), num=int((y.max() - y.min()) / ((x.max() - x.min()) / 100)))
+                    #print((y.max() - y.min()) / ((x.max() - x.min()) / 100))
+                    
+                else:
+                    gridx = np.linspace(x.min(), x.max(), num=int((x.max() - x.min()) / ((y.max() - y.min()) / 100)))
+                    gridy = np.linspace(y.min(), y.max(), num=100)
+                    #print((x.max() - x.min()) / ((y.max() - y.min()) / 100))
+
+                OK = OrdinaryKriging(
+                    y, x, z,
+                    variogram_parameters=[slope,nugget],
+                    verbose=False,
+                    enable_plotting=False,
+                    pseudo_inv=True,
+                )
+                gridz, ss = OK.execute("grid", gridy, gridx)
+                
+                ax = plt.figure().add_subplot(111)
+                if(levels == []):
+                    contour = ax.contour(gridy, gridx, gridz.data, cmap=plt.cm.jet)
+                else:
+                    contour = ax.contour(gridy, gridx, gridz.data, levels=levels, cmap=plt.cm.jet)
+
+            else:
+                coor = np.vstack((x,y)).T
+                xi, yi = np.mgrid[x.min() - 0.0001:x.max() + 0.0001:50j, y.min() - 0.0001:y.max() + 0.0001:50j]
+                zi = gd(coor, z, (xi, yi), method='cubic')
+                ax = plt.figure().add_subplot(111)
+                if(levels == []):
+                    contour = ax.contour(yi, xi, zi, cmap=plt.cm.jet)
+                    
+                else:
+                    contour = ax.contour(yi, xi, zi, levels=levels, cmap=plt.cm.jet)
+
             geojson = geojsoncontour.contour_to_geojson(contour=contour, unit='m', ndigits=100)
             plt.close()
             return jsonify({"map_data" : geojson, "max" : Max, "min" : Min})
+        
         except Exception as e:
             print(e)
             abort(400)
     else:
         abort(400)
 
-
-@app.route("/rose", methods=['POST'])
-def rose():
-    if request.method == 'POST':
-        df = pd.read_excel('小港/20210218.xlsx', header = 3, usecols = [0, 1, 2, 3])
-        df = df.drop([0])
-        
-        value = [0.0, 0.3, 1.5, 3.3, 5.4, 7.9, 10.7, 13.8, 17.1, 20.7]
-        degree = [[348.76, 11.25], [11.26, 33.75], [33.76, 56.25], [56.26, 78.75], [78.76, 101.25], [101.26, 123.75], 
-                  [123.76, 146.25], [146.26, 168.75], [168.76, 191.25], [191.26, 213.75], [213.76, 236.25], [236.26, 258.75], 
-                  [258.76, 281.25], [281.26, 303.75], [303.76, 326.25], [326.26, 348.75]]
-        groups = {}
-        for i in range(1, len(value)):
-            
-            data = np.array(df[(df.WS > value[i - 1]) & (df.WS < value[i])]['WD'].to_list())
-            if(len(data) != 0):
-                pro = []
-                size = len(data)
-                for d1, d2 in degree:
-                    pro.append(round(len(np.where((data > d1) & (data < d2))[0]) / size * 100, 2))
-                groups[value[i]] = pro
-            else:
-                groups[value[i]] = [0 for n in range(16)]
-        print(groups)
-        return jsonify(groups)
-    else:
-        abort(400)
 
 '''
 download csv file with time start, time end & SENSOR 
@@ -161,6 +203,7 @@ def api_download():
     if request.method == 'POST':
         time_start = request.form['time_start']
         time_finish = request.form['time_finish']
+        time_gap = request.form["time_gap"]
         sensor = request.form['sensorID']        
 
         try:
@@ -174,10 +217,23 @@ def api_download():
                             ''' % (sensor),
                             (time_start, time_finish)).fetchall()
                 conn.commit()
+                data_filter = [data[0]]
+                time1 = datetime.strptime(data[0][0], "%Y-%m-%d %H:%M:%S")
+                for i in range(1, len(data)):
+                    if(i + 1 < len(data)):
+                        time2 = datetime.strptime(data[i][0], "%Y-%m-%d %H:%M:%S")
+                        if(time2 - time1 >= timedelta(seconds = int(time_gap))):
+                            data_filter.append(data[i])
+                            time1 = time2
+                    else:
+                        time2 = datetime.strptime(data[i - 1][0], "%Y-%m-%d %H:%M:%S")
+                        if(time2 - time1 >= timedelta(seconds = int(time_gap))):
+                            data_filter.append(data[i])
 
                 csv = 'time,lat,lon,' + sensor +'\n'
-                for row in data:
+                for row in data_filter:
                     csv += ','.join(str(word) for word in row) + '\n'
+                #print(csv)
 
                 return Response(csv, mimetype="text/csv", headers={"Content-disposition": "attachment; filename=sensor.csv"})
         except sqlite3.Error as error:
@@ -199,6 +255,7 @@ def api_show():
     if request.method == 'POST':
         time_start = request.form['Time_start']
         time_finish = request.form['Time_finish']
+        time_gap = request.form["Time_Gap"]
         sensor = request.form['Sensor_ID']
         try:
             with sqlite3.connect('mqtt/sensor.db') as conn:
@@ -211,13 +268,26 @@ def api_show():
                             ''' % (sensor),
                             (time_start, time_finish)).fetchall()
                 conn.commit()
-                return jsonify(data)
+                data_filter = [data[0]]
+                time1 = datetime.strptime(data[0][0], "%Y-%m-%d %H:%M:%S")
+                for i in range(1, len(data)):
+                    if(i + 1 < len(data)):
+                        time2 = datetime.strptime(data[i][0], "%Y-%m-%d %H:%M:%S")
+                        if(time2 - time1 >= timedelta(seconds = int(time_gap))):
+                            data_filter.append(data[i])
+                            time1 = time2
+                    else:
+                        time2 = datetime.strptime(data[i - 1][0], "%Y-%m-%d %H:%M:%S")
+                        if(time2 - time1 >= timedelta(seconds = int(time_gap))):
+                            data_filter.append(data[i])
+                return jsonify(data_filter)
 
         except sqlite3.Error as error:
             print("sqlite3 Error : ", error)
             abort(400)
     else:
         abort(400)
+
 
 
 @app.errorhandler(404)
@@ -229,17 +299,34 @@ def handle_bad_request(error):
     return '輸入資料格式錯誤或資料庫錯誤'
 
 '''
-get data from database
+Get data from database
 location: ./mqtt/sensor.db
+Input:
+    sensor: Ex: pm2_5
+    time_start, time_finish:
+        format: YYYY-MM-DD HH:MM
+    data_type:
+        Bar or Contour
+
+Return:
+    data_type:
+        Bar:
+            data_list, Max, Min
+        
+        Contour:
+            x: lat
+            y: lon
+            z: sensor
+            Max, Min
 ''' 
-def get_data(sensor, time_start, time_finish, data_type="Bar"):
+def get_data(sensor, time_start, time_finish, time_gap, data_type="Bar"):
     data_dic = {}
     data_list = []
 
     try:
         with sqlite3.connect('mqtt/sensor.db') as conn:
             c = conn.cursor()
-            result = c.execute('''
+            data = c.execute('''
                         SELECT time, %s, lat, lon
                         FROM SENSOR
                         WHERE time > ? AND
@@ -247,6 +334,19 @@ def get_data(sensor, time_start, time_finish, data_type="Bar"):
                         ''' % (sensor),
                         (time_start, time_finish)).fetchall()
             conn.commit()
+
+            result = [data[0]]
+            time1 = datetime.strptime(data[0][0], "%Y-%m-%d %H:%M:%S")
+            for i in range(1, len(data)):
+                if(i + 1 < len(data)):
+                    time2 = datetime.strptime(data[i][0], "%Y-%m-%d %H:%M:%S")
+                    if(time2 - time1 >= timedelta(seconds = int(time_gap))):
+                        result.append(data[i])
+                        time1 = time2
+                else:
+                    time2 = datetime.strptime(data[i - 1][0], "%Y-%m-%d %H:%M:%S")
+                    if(time2 - time1 >= timedelta(seconds = int(time_gap))):
+                        result.append(data[i])
 
             Max = float(result[0][1])
             Min = float(result[0][1])
@@ -261,6 +361,7 @@ def get_data(sensor, time_start, time_finish, data_type="Bar"):
                     data_dic["lon"] = item[3]
                     data_list.append(data_dic)
                     data_dic = {}
+
                 return data_list, Max, Min
             elif(data_type == "Contour"):
                 size = len(result)
@@ -281,64 +382,6 @@ def get_data(sensor, time_start, time_finish, data_type="Bar"):
     except sqlite3.Error as error:
         print("sqlite3 Error : ", error)
 
-'''
-def crawler_sensor(sensor, time_start, time_finish, data_type="Bar"):
-    username = 'wecc-pingtung'
-    password = '27548312wecc'
-    url = "http://52.196.146.119:8000/login/"
-    device = 'TW170116C0203401'
 
-    if(sensor == 'PM25'):
-        sensor = 'pms5003_pm25_air'
-    elif(sensor == 'TVOC'):
-        sensor = 'sgp30_tvoc'
-
-    data_dic = {}
-    data_list = []
-    try:
-        client = requests.session()
-        client.get(url)
-        csrftoken = client.cookies['csrftoken']
-        login_data = {'csrfmiddlewaretoken': csrftoken, 'username': username, 'password': password, "next": ""}
-        client.post(url, data = login_data)
-        sessionid = client.cookies['sessionid']
-        headers = {'Cookie': 'csrftoken=' + csrftoken + '; sessionid=' + sessionid}
-        data = {'csrfmiddlewaretoken': csrftoken, 'sensor': sensor, 'time_frame_start': time_start, 'time_frame_finish': time_finish, 'device': device}
-        r = client.post('http://52.196.146.119:8000/device_list/history_table_download',headers = headers, data = data)
-
-        if(r.status_code == 500):
-            print("500")
-            return {"server type" : str(r.status_code)}
-
-        csv = r.text
-        data = np.array([c.split(',') for c in csv.splitlines()])
-        #print(data)
-        if(data_type == "Bar"):
-            for i in range(1, len(data)):
-                data_dic[data[0, 0]] = data[i, 0]
-                data_dic['PM25'] = data[i, 1]
-                data_dic[data[0, 2]] = data[i, 2]
-                data_dic[data[0, 3]] = data[i, 3]
-                data_list.append(data_dic)
-                data_dic = {}
-            print(data_list)
-            return data_list
-        elif(data_type == "Contour"):
-            size = len(data)
-            x = np.zeros(size) #lat
-            y = np.zeros(size) #lon
-            z = np.zeros(size) #sensor
-            for i in range(1, len(data)):
-                x[i] = data[i, 2]
-                y[i] = data[i, 3]
-                z[i] = data[i, 1]
-            return x, y, z
-    except:
-        print("return error")
-        data_list = {"type" : "error"}
-        return data_list
-'''
-
-
-if __name__ == '__main__':
+if __name__ == '__main__': 
     app.run(host="127.0.0.1", port=8000, debug=True)
