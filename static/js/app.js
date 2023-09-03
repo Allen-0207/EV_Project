@@ -1,3 +1,4 @@
+// Set datetime format
 tail.DateTime("#time_start, #time_finish", {
                     position: "right", timeSeconds: false, timeStepMinutes: 1, 
                     dateFormat: "YYYY-mm-dd", timeFormat: "HH:ii", stayOpen: false});
@@ -9,16 +10,20 @@ document.addEventListener("DOMContentLoaded", function(){
   })
 }); 
 
+// Add OpenStreetMap tile layer to map,
 const tiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18,
     minZoom: 1,
     attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
 });
 
+// init lat & lon
 const latlng = L.latLng(22.722002, 120.307231);
 
+// 紀錄畫過的圖
 let charts = [];
 
+// Set default position
 const map = L.map('map', {
     center: latlng,
     zoom: 15.5,
@@ -42,6 +47,7 @@ L.easyPrint({
     hideControlContainer: false
 }).addTo(map);
 
+// Add upload file fuction
 $(function() {
     let oFileIn = document.getElementById('file_input');
     if(oFileIn.addEventListener){
@@ -54,7 +60,7 @@ $(function() {
     }
 });
 
-//default colors 
+// Set default colors 
 $( document ).ready(function() {
     const storage = window.localStorage;
     
@@ -63,12 +69,14 @@ $( document ).ready(function() {
     } 
 })
 
-//Bar
+// Visualize Bar charts
 function Update_Bar() {
     const time_start = document.getElementById("time_start").value;
     const time_finish = document.getElementById("time_finish").value;
+    const time_gap = document.getElementById("time_gap").value;
     const sensor = document.getElementById("sensorID").value;
     const part = parseInt(document.getElementById("parts").value, 10);
+
     if(time_start == "" || time_finish == ""){
         alert("請選擇日期");
         return false;
@@ -81,8 +89,8 @@ function Update_Bar() {
 
     $.ajax({
         url: '/api',
-        type: 'POST',
-        data: { Graph: "Bar", Time_start: time_start, Time_finish: time_finish, Sensor_ID: sensor},
+        type: 'GET',
+        data: { Graph: "Bar", Time_start: time_start, Time_finish: time_finish, Sensor_ID: sensor, Time_Gap: time_gap},
         dataType: "json",
         success: function (json_data) {
 
@@ -104,11 +112,10 @@ function Update_Bar() {
                 grades.push(min_num);
             }
 
-            console.log(grades);
+            //console.log(grades);
             Create_Legend(grades);
 
             let d;
-            let max = getMax(map_data, sensor);
             if(charts.length != 0)
                 for (var i = 0; i < charts.length; i++) {
                     map.removeLayer(charts[i]);
@@ -121,9 +128,12 @@ function Update_Bar() {
                 latitude += parseFloat(d.lat);
                 longitude += parseFloat(d.lon);
                 let popup = L.popup().setContent(sensor + " : " + d[sensor]);
-                console.log(grades);
-                charts.push(L.minichart([d.lat, d.lon], {data: d[sensor], maxValues: max, width: 15, colors: [getColor(d[sensor], grades)], labels: "auto"}).bindPopup(popup).openPopup());
-                map.addLayer(charts[i]);
+                //console.log(grades);
+                let bar = L.minichart([d.lat, d.lon], {data: d[sensor], maxValues: max_num, width: 15, colors: [getColor(d[sensor], grades)]}).bindPopup(popup).openPopup();
+                //bar.setText('test', {center: true});
+                console.log(bar);
+                charts.push(bar);
+                map.addLayer(bar);
             }
 
 
@@ -136,14 +146,22 @@ function Update_Bar() {
     });
 }
 
-//Contour
+// Visualize Contour map
 function Update_Contour() {
+    const method = document.getElementById("method").value;
     const time_start = document.getElementById("time_start").value;
     const time_finish = document.getElementById("time_finish").value;
+    const time_gap = document.getElementById("time_gap").value;
     const sensor = document.getElementById("sensorID").value;
     const part = parseInt(document.getElementById("parts").value, 10);
     const level_text = document.getElementById("levels").value;
-    if(time_start == "" || time_finish == "") {
+    let slope = document.getElementById("slope").value;
+    let nugget = document.getElementById("nugget").value;
+
+    if(slope == ''){slope = 1}
+    if(nugget == ''){nugget = 0}
+
+    if(time_start == "" || time_finish == ""){
         alert("請選擇日期");
         return false;
     }
@@ -174,23 +192,25 @@ function Update_Contour() {
     data.Graph = "Contour";
     data.Time_start = time_start;
     data.Time_finish = time_finish;
+    data.Time_Gap = time_gap;
     data.Sensor_ID = sensor;
     data.levels = levels;
+    data.slope = slope;
+    data.nugget = nugget;
+    data.method = method;
     
     $.ajax({
         url: '/api',
-        type: 'POST',
+        type: 'GET',
         data: data,
         dataType: "json",
         success: function (json_data) {
-            console.log(json_data);
+            //console.log(json_data);
             const map_data = JSON.parse(json_data["map_data"]);
             const max_num = json_data["max"];
             const min_num = json_data["min"];
 
-
-
-            console.log(typeof map_data);
+            console.log(map_data);
             if(map_data.hasOwnProperty('Server_type') != true){
 
                 let grades = [];
@@ -207,7 +227,7 @@ function Update_Contour() {
                     grades.push(min_num);
                 }
 
-                console.log(grades);
+                //console.log(grades);
                 Create_Legend(grades);
 
                 if(charts.length != 0)
@@ -216,10 +236,13 @@ function Update_Contour() {
                     }
                     charts = [];
 
+                if(map_data["features"].length == 0){ return }
+
                 charts.push(L.geoJSON(map_data, {
                     onEachFeature: function  (feature, layer) {
                         if (feature.properties["level-value"])
                             layer.bindPopup(sensor + " : " + String(feature.properties["level-value"]));
+                        layer.setText((feature.properties["level-value"]).toString());
                     },
                     style: function (feature) {
                         return {
@@ -392,11 +415,21 @@ function filePicked(oEvent) {
 
 //get Countour geojson
 function API_Countour(lat, lon, sensor, part, levels, sensor_name) {
+    const method = document.getElementById("modal_method").value;
+    let slope = document.getElementById("modal_slope").value;
+    let nugget = document.getElementById("modal_nugget").value;
+
+    if(slope == ''){slope = 1}
+    if(nugget == ''){nugget = 0}
+    
     let data = {};
     data.Lat = lat;
     data.Lon = lon;
     data.Sensor = sensor;
     data.levels = levels;
+    data.slope = slope;
+    data.nugget = nugget;
+    data.method = method
 
     $.ajax({
         url: '/api_contour',
@@ -416,6 +449,8 @@ function API_Countour(lat, lon, sensor, part, levels, sensor_name) {
                 }
                 charts = [];
             }
+
+            if(map_data["features"].length == 0){ return }
 
             let grades = [];
             if(part > 1){
@@ -437,8 +472,8 @@ function API_Countour(lat, lon, sensor, part, levels, sensor_name) {
             charts.push(L.geoJSON(map_data, {
                 onEachFeature: function  (feature, layer) {
                     if (feature.properties["level-value"])
-                        
                         layer.bindPopup(sensor_name + " : " + String(feature.properties["level-value"]));
+                    layer.setText((feature.properties["level-value"]).toString());
                 },
                 style: function (feature) {
                     return {
@@ -463,13 +498,19 @@ function API_Countour(lat, lon, sensor, part, levels, sensor_name) {
 
 
 
-//Create legend
+/* 
+地圖上顯示圖例(Legend)
+Input: 
+	grades 間距
+*/
 function Create_Legend(grades) {
+	// Remove old legend
     let old_legend = document.getElementsByClassName("info legend")[0];
     if(old_legend != undefined){
         old_legend.remove()
     }
 
+	// Add new legend
     let legend = L.control({position: 'bottomright'});
 
     legend.onAdd = function(map) {
@@ -479,7 +520,7 @@ function Create_Legend(grades) {
             //console.log(getColor(grades[i] + 1));
             div.innerHTML +=
                 '<div><i style="background:' + getColor(grades[i], grades) + '"></i> ' +
-                grades[i]  + '</div>';
+                grades[i] + '</div>';
         }
 
         return div;
@@ -504,101 +545,15 @@ function Clear() {
         charts = [];
 }
 
-//Rose for test
-function Update_Wind_Rose() {
-    
-    const time_start = "2021-03-18 08:00";    //document.getElementById("wind_time_start").value;
-    const time_finish = "2021-03-18 08:00";   //document.getElementById("wind_time_finish").value;
-    /*
-    if(time_start == "" || time_finish == "") {
-        alert("請選擇日期");
-        return false;
-    }
-    */
-    $.ajax({
-        url: '/rose',
-        type: 'POST',
-        data: {Time_start: time_start, Time_finish: time_finish},
-        dataType: "json",
-        success: function (data) {
-            //20210218
-            const names = {"0.3" : "< 0.3", "1.5" : "0.3 ~ 1.5", "3.3" : "1.6 ~ 3.3", "5.4" : "3.4 ~ 5.4", "7.9" : "5.5 ~ 7.9", "10.7" : "8.0 ~ 10.7", "13.8" : "10.8 ~ 13.8", "17.1" : "13.9 ~ 17.1", "20.7" : "17.2 ~ 20.7"};
-            const colors = {"0.3" : "rgb(249, 161, 35)", "1.5" : "rgb(249, 249, 35)", "3.3" : "rgb(91, 249, 35)", "5.4" : "rgb(35, 249, 179)", "7.9" : "rgb(35, 88, 249)", "10.7" : "rgb(167, 35, 249)", "13.8" : "rgb(249, 35, 230)", "17.1" : "rgb(249, 35, 69)", "20.7" : "rgb(164, 35, 157)"}
-            const theta = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
-            //              北, 北北東, 北東, 東北東, 東,  東南東, 南東, 南南東, 南, 南南西, 南西, 西南西, 西,  西北西, 北西,  北北西
+//	----------------------------------------------------------------------------------------
 
-            const rose_data = []
-            for (var i in data) {
-                    rose_data.push({
-                    r: data[i],
-                    name: names[i],
-                    theta: theta,
-                    marker: {color: colors[i]},
-                    type: "barpolar"
-                  })
-            }
-            console.log(rose_data)
-
-            const mapElement = document.getElementById("map");
-            const width = mapElement.offsetWidth;
-            const height = mapElement.offsetHeight;
-
-            const wind_width = width / 4;
-            const wind_height = height / 4;
-
-            L.Control.MyControl = L.Control.extend({
-              onAdd: function(map) {
-                let el = L.DomUtil.create('div');
-                el.id = 'wind-rose';
-                el.style.height = (wind_height + 20).toString() + 'px';
-                el.style.width  = wind_width.toString() + 'px';
-
-                return el;
-              },
-              onRemove: function(map) {
-                let el = L.DomUtil.remove('div');
-                el.id = 'wind-rose';
-                el.style.height = (wind_height + 20).toString() + 'px';
-                el.style.width  = wind_width.toString() + 'px';
-                return el;
-              }
-            });
-
-            L.control.myControl = function(opts) {
-              return new L.Control.MyControl(opts);
-            }
-
-            L.control.myControl({
-              position: 'topright'
-            }).addTo(map);
-
-            //619, 50
-            const layout = {
-                //paper_bgcolor:'rgba(0,0,0,0)',
-                margin: {
-                    l: 20,
-                    r: 20,
-                    b: 20,
-                    t: 20,
-                    pad: 20
-                },
-                font: {size: 8, color: "black",},
-                polar: {
-                  barmode: "overlay",
-                  bargap: 0,
-                  radialaxis: {ticksuffix: "%", angle: 22.5, dtick: 20, autorange: true},
-                  angularaxis: {direction: "clockwise"}
-                }
-              };
-
-            const config = {responsive: true};
-
-            Plotly.newPlot("wind-rose", rose_data, layout, config);
-
-    }});
-}
-
-
+/* 
+Visualized Wind Rose Charts 
+1. select excel file
+2. Covert Excel to JSON
+3. Select start date & end date
+4. Group the data by different wind speed
+*/
 function wind_filePicked(oEvent) {
 
     let ExcelToJSON = function() {
@@ -623,10 +578,11 @@ function wind_filePicked(oEvent) {
             WS = result[1];
             WD = result[2];
 
-            console.log(Time);
-            console.log(WS);
-            console.log(WD);
-
+            // console.log(Time);
+            // console.log(WS);
+            // console.log(WD);
+			
+			// 開一個Modal(互動式視窗)
             let myModal = new bootstrap.Modal(document.getElementById('Modal_rose_file'), {});
             
             myModal.show();
@@ -657,10 +613,15 @@ function wind_filePicked(oEvent) {
 }
 
 function Rose(Time, WS, WD) {
+	// Close Modal
     const myModal = new bootstrap.Modal(document.getElementById('Modal_rose_file'), {});        
     myModal.hide();
+
+	// Get start time & end time
     const time_start = new Date(document.getElementById("wind_time_start").value);
     const time_finish = new Date(document.getElementById("wind_time_finish").value);
+
+	// get data between two dates
     let new_WS = [];
     let new_WD =[];
     for(var i = 0; i < Time.length; i++){
@@ -669,15 +630,23 @@ function Rose(Time, WS, WD) {
             new_WD.push(WD[i]);
         }
     }
+
+	// Sort
     const rose_data = sort_rose(new_WS, new_WD);
     rose_show(rose_data);
 }
 
+/* 
+在地圖上顯示風玫圖
+Input:
+	rose_datas
+*/
 function rose_show(rose_data) {
     const mapElement = document.getElementById("map");
     const width = mapElement.offsetWidth;
     const height = mapElement.offsetHeight;
 
+	// Wind rose chart size
     const wind_width = width / 4;
     const wind_height = height / 4;
 
@@ -722,8 +691,111 @@ function rose_show(rose_data) {
 
 }
 
-//GIF
+/* 
+Separate WS & WD by group 
+Input: 
+	WS, WD
+
+Return:
+	rose_data: (根據不同風速分成組，每個方向的風速大小)
+		r: 每個方向的風速
+		name: 風速範圍
+		theta: 風向的值
+		marker: color
+
+*/
+function sort_rose(WS, WD) {
+    const names = {"0.3" : "< 0.3", "1.5" : "0.3 ~ 1.5", "3.3" : "1.6 ~ 3.3", "5.4" : "3.4 ~ 5.4", "7.9" : "5.5 ~ 7.9", 
+					"10.7" : "8.0 ~ 10.7", "13.8" : "10.8 ~ 13.8", "17.1" : "13.9 ~ 17.1", "20.7" : "17.2 ~ 20.7"};
+    const colors = {"0.3" : "rgb(249, 161, 35)", "1.5" : "rgb(249, 249, 35)", "3.3" : "rgb(91, 249, 35)", "5.4" : "rgb(35, 249, 179)", 
+					"7.9" : "rgb(35, 88, 249)", "10.7" : "rgb(167, 35, 249)", "13.8" : "rgb(249, 35, 230)", "17.1" : "rgb(249, 35, 69)", "20.7" : "rgb(164, 35, 157)"}
+    const theta = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    //              北, 北北東, 北東, 東北東, 東,  東南東, 南東, 南南東, 南, 南南西, 南西, 西南西, 西,  西北西, 北西,  北北西
+
+    const value = [0.0, 0.3, 1.5, 3.3, 5.4, 7.9, 10.7, 13.8, 17.1, 20.7];
+    const degree = [[348.76, 11.25], [11.26, 33.75], [33.76, 56.25], [56.26, 78.75], [78.76, 101.25], [101.26, 123.75], 
+                  [123.76, 146.25], [146.26, 168.75], [168.76, 191.25], [191.26, 213.75], [213.76, 236.25], [236.26, 258.75], 
+                  [258.76, 281.25], [281.26, 303.75], [303.76, 326.25], [326.26, 348.75]];
+    groups = {}
+    for(var i = 1; i < value.length; i++){
+        let data = WS_range(WS, WD, value[i - 1], value[i])
+        if(data.length != 0){
+            let percent = [];
+            let size = data.length;
+            for(var l = 0; l < degree.length; l++){
+                let d1 = degree[l][0];
+                let d2 = degree[l][1];
+                let p = WD_percent(data, d1, d2);
+
+				// Add percent of this direction
+                percent.push(p / size * 100);
+            }
+            groups[value[i]] = percent;
+        //這個範圍沒有值(全補0)
+		}else{  
+            groups[value[i]] = Array(16).fill(0)
+        }
+    }
+    
+    const rose_data = []
+    for (var i in groups) {
+        rose_data.push({
+            r: groups[i],
+            name: names[i],
+            theta: theta,
+            marker: {color: colors[i]},
+            type: "barpolar"
+        })
+    }
+    return rose_data
+}
+
+/*  
+Pick the WS in the range 
+Input:	
+	WS, WD, lower, upper
+
+Output:
+	result: 在範圍內的WD
+*/
+function WS_range(WS, WD, lower, upper) {
+    let result = [];
+    for(var i = 0; i < WS.length; i++){
+        if(WS[i] >= lower && WS[i] < upper){
+            result.push(WD[i]);
+        }
+    }
+    return result;
+}
+
+
+/* 
+計算在風向範圍內的數量
+Input:
+	data: WD
+	d1, d2
+
+Return:
+	len: 在風向的數值數量
+*/
+function WD_percent(data, d1, d2) {
+    let len = 0;
+    data.forEach(function(d){
+        if(Number(d) >= d1 && Number(d) < d2){
+            len++;
+        }
+    });
+    return len;
+}
+
+//	----------------------------------------------------------------------------------------
+
+/* 
+When buton click
+	Covert Map to Image & Make GIF
+*/
 function Add_Image() {
+	// Get map width & height
     const mapElement = document.getElementById("map");
     const width = mapElement.offsetWidth;
     const height = mapElement.offsetHeight;
@@ -731,6 +803,7 @@ function Add_Image() {
     //const p = new Promise(resolve => tileLayer.on("load", () => resolve()));
     domtoimage.toPng(mapElement, { width, height })
         .then(function(dataURL) {
+			// Put image to table 
             const img_li = document.createElement("li");
             img_li.setAttribute('id','li-img');
             img_li.setAttribute('class','ui-sortable-handle');
@@ -750,7 +823,9 @@ function Add_Image() {
             img_div.appendChild(img_a);
             img_li.appendChild(img_div);
             GIF(width, height);
-            
+			
+
+			// Remove image button
             $('.remove-image').click(function() {
                 console.log("click");
                 $(this).parent().parent().remove();
@@ -761,15 +836,24 @@ function Add_Image() {
 
 }
 
-//make GIF with img sort
+/* 
+Make GIF with img order 
+Input: 
+	width, height (Image)
+
+*/
 function GIF(width, height) {
+	// Get Image order
     let lis = document.getElementById('img-list').getElementsByTagName("li");
     let image_list = [];
     for(var i = 0; i < lis.length; i++){
         image_list.push(lis[i].getElementsByTagName('img')[0].src)
     }
+
     //console.log(image_list.length);
-    if(image_list.length == 0) {
+    
+	// No image -> delete GIF  
+	if(image_list.length == 0) {
         document.getElementById('GIF').style.display='none';
         document.getElementById('save_btn').removeAttribute("href");
 
@@ -794,7 +878,9 @@ function GIF(width, height) {
     
 }
 
-//click to switch img sort 
+/* 
+Drag to change img sort  
+*/
 $(document).ready(function () {
     $("#img-list").sortable({
         update: function(event, ui) { 
@@ -807,27 +893,25 @@ $(document).ready(function () {
 });
 
 
-
-
-function getMax(arr, sensor) {
-    let max = 0, value;
-    for (var i = 0; i < arr.length; i++) {
-        value = arr[i][sensor];
-        if(value > max)
-            max = value;
-    }
-    return max;
-}
-
-
-function getColor(x, grades) {
+/*
+Input:
+    x: 取顏色的值
+    grades: 分成幾等分的範圍
+        Ex: [0, 10, 50, 100]
     
+Return:
+    hex value of color
+*/
+function getColor(x, grades) {
+    // 從localStorage 拿 plaette 的 Name
     const storage = window.localStorage;
     const plaette = storage.getItem("colors");
     const part = grades.length;
 
+    // generate palette useing jPlatte
     const colorMap = jPalette.ColorMap.get(plaette)(part);
 
+    // 在區間內
     for(var i = 0; i < grades.length - 1; i++){
         if(x >= grades[i] && x < grades[i + 1]){
             const color = colorMap["map"][i]
@@ -839,6 +923,7 @@ function getColor(x, grades) {
         }
     }
 
+    // > 最大值
     const color = colorMap["map"][colorMap["map"].length - 1]
     let r = color["r"];
     let g = color["g"];
@@ -918,69 +1003,7 @@ function csvJSON(csv) {
 }
 
 
-//separate WS & WD by group
-function sort_rose(WS, WD) {
-    const names = {"0.3" : "< 0.3", "1.5" : "0.3 ~ 1.5", "3.3" : "1.6 ~ 3.3", "5.4" : "3.4 ~ 5.4", "7.9" : "5.5 ~ 7.9", "10.7" : "8.0 ~ 10.7", "13.8" : "10.8 ~ 13.8", "17.1" : "13.9 ~ 17.1", "20.7" : "17.2 ~ 20.7"};
-    const colors = {"0.3" : "rgb(249, 161, 35)", "1.5" : "rgb(249, 249, 35)", "3.3" : "rgb(91, 249, 35)", "5.4" : "rgb(35, 249, 179)", "7.9" : "rgb(35, 88, 249)", "10.7" : "rgb(167, 35, 249)", "13.8" : "rgb(249, 35, 230)", "17.1" : "rgb(249, 35, 69)", "20.7" : "rgb(164, 35, 157)"}
-    const theta = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
-    //              北, 北北東, 北東, 東北東, 東,  東南東, 南東, 南南東, 南, 南南西, 南西, 西南西, 西,  西北西, 北西,  北北西
 
-    const value = [0.0, 0.3, 1.5, 3.3, 5.4, 7.9, 10.7, 13.8, 17.1, 20.7];
-    const degree = [[348.76, 11.25], [11.26, 33.75], [33.76, 56.25], [56.26, 78.75], [78.76, 101.25], [101.26, 123.75], 
-                  [123.76, 146.25], [146.26, 168.75], [168.76, 191.25], [191.26, 213.75], [213.76, 236.25], [236.26, 258.75], 
-                  [258.76, 281.25], [281.26, 303.75], [303.76, 326.25], [326.26, 348.75]];
-    groups = {}
-    for(var i = 1; i < value.length; i++){
-        let data = WS_range(WS, WD, value[i - 1], value[i])
-        if(data.length != 0){
-            let pro = [];
-            let size = data.length;
-            for(var l = 0; l < degree.length; l++){
-                let d1 = degree[l][0];
-                let d2 = degree[l][1];
-                let p = WD_pro(data, d1, d2);
-                pro.push(p / size * 100);
-            }
-            groups[value[i]] = pro;
-        }else{  
-            groups[value[i]] = Array(16).fill(0)
-        }
-    }
-    
-    const rose_data = []
-    for (var i in groups) {
-        rose_data.push({
-            r: groups[i],
-            name: names[i],
-            theta: theta,
-            marker: {color: colors[i]},
-            type: "barpolar"
-        })
-    }
-    return rose_data
-}
-
-//pick the WS in range
-function WS_range(WS, WD, lower, upper) {
-    let result = [];
-    for(var i = 0; i < WS.length; i++){
-        if(WS[i] >= lower && WS[i] < upper){
-            result.push(WD[i]);
-        }
-    }
-    return result;
-}
-
-//count each WD percent in all data
-function WD_pro(data, d1, d2) {
-    let len = 0;
-    data.forEach(function(d){
-        if(Number(d) >= d1 && Number(d) < d2){
-            len++;
-        }
-    });
-    return len;
-}
 
 //Convert RGB to Hex
 function rgbToHex(r, g, b) {
