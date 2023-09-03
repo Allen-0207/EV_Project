@@ -46,3 +46,6 @@ Then you can see the web on http://127.0.0.1:8000/
 ### 風玫圖 (Wind rose)
 ![Wind_rose](img/wind_rose.png)
  
+
+### Note:
+[Notion Note](https://battle-windshield-ec3.notion.site/0f1fe2a66e7f4f8eb811767dd8caa850)
