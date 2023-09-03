@@ -35,6 +35,8 @@ Then you can see the web on http://127.0.0.1:8000/
 ### Bar chart & COntour map
 `You can use the 'PM25.csv' file to conduct the test. Please remember to specify the desired number of divisions. Ex: 10`
 
+## Note:
+[Notion Note](https://battle-windshield-ec3.notion.site/0f1fe2a66e7f4f8eb811767dd8caa850)
 
 ## Demo
 ### 等濃度圖 (contour map)
@@ -47,5 +49,3 @@ Then you can see the web on http://127.0.0.1:8000/
 ![Wind_rose](img/wind_rose.png)
  
 
-### Note:
-[Notion Note](https://battle-windshield-ec3.notion.site/0f1fe2a66e7f4f8eb811767dd8caa850)
