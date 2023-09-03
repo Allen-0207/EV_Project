@@ -21,6 +21,7 @@
             <div class="container">
                 <a class="navbar-brand" href="/">Home</a>
                 <a class="navbar-brand" href="/data">Data</a>
+                <a class="navbar-brand" href="/calculator">Calculator</a>
                 <a class="navbar-brand" href="/setting">Setting</a>
                 <ul id="main_nav" class="nav nav-pills ms-auto">
                 </ul>
@@ -53,6 +54,14 @@
                                 <div class="form-floating m-3">
                                     <input type="text" id="time_finish" name="time_finish" class="form-control">
                                     <label for="time_finish">Time frame finish:</label>
+                                </div>
+                                <div class="form-floating m-3">
+                                    <select id = "time_gap" name="time_gap" class="form-select">
+                                        <option value="15">15秒</option>
+                                        <option value="30">30秒</option>
+                                        <option value="60">60秒</option>
+                                    </select>
+                                    <label for="time_gap">時間間隔: </label>
                                 </div>
                                 <button type="submit" id="btn" class="btn btn-outline-dark">csv</button>
                             </form>

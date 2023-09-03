@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Calculator</title>
+        
+        <link rel="stylesheet" href="static/css/screen.css"/>
+        <link rel="stylesheet" href="static/css/styles.css"/>
+        <link rel="stylesheet" href="static/css/jquery-ui.css"/>
+        <link rel="stylesheet" href="static/css/bootstrap.min.css"/>
+        <script src="static/js/jquery-3.6.0.min.js"></script>
+        <script src="static/js/jquery-ui.js"></script>
+        <script src="static/js/bootstrap.min.js"></script>
+        <script src="static/js/algebra-0.2.6.min.js"></script>
+        <script type="text/javascript"src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+
+    <body>
+        <nav class="navbar navbar-expand-lg fixed-top navbar-light shadow-sm bg-white">
+            <div class="container">
+                <a class="navbar-brand" href="/">Home</a>
+                <a class="navbar-brand" href="/data">Data</a>
+                <a class="navbar-brand" href="/calculator">Calculator</a>
+                <a class="navbar-brand" href="/setting">Setting</a>
+                <ul id="main_nav" class="nav nav-pills ms-auto">
+                </ul>
+            </div> 
+        </nav>
+
+        <div id="section_data" class="container-fluid">
+            <section id="nav_input" class="text-center">
+                <div id="input-body" class="container">
+                    <h2 id="formula">$$
+                        \frac{C1}{C2} = \frac{ax{_{2}}^{b}\times cx{_{2}}^{d}+f}{ax{_{1}}^{b}\times cx{_{1}}^{d}+f}\times \frac{e^{-\frac{H^{2}}{2\left ( cx{_{1}}^{d}+f \right )^{2}}}}{e^{-\frac{H^{2}}{2\left ( cx{_{2}}^{d}+f \right )^{2}}}}\times \frac{1}{e^{-\frac{y{_{2}}^{2}}{2\left ( ax{_{2}}^{b} \right )^{2}}}}
+                    $$</h2>
+                    <div class="row">
+                        <div class="col-sm">
+
+                            <h3 style="margin-bottom: 40px;">Calculator</h3>
+                            <div class="row m-1">
+                                <div class="col-md">
+                                    Stability: &nbsp;
+                                    <div class="form-check form-check-inline">
+                                      <input class="form-check-input" type="radio" name="Stability" id="A" checked>
+                                      <label class="form-check-label" for="A">A</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                      <input class="form-check-input" type="radio" name="Stability" id="B">
+                                      <label class="form-check-label" for="B">B</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                      <input class="form-check-input" type="radio" name="Stability" id="C">
+                                      <label class="form-check-label" for="C">C</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                      <input class="form-check-input" type="radio" name="Stability" id="D">
+                                      <label class="form-check-label" for="D">D</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                      <input class="form-check-input" type="radio" name="Stability" id="E">
+                                      <label class="form-check-label" for="E">E</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                      <input class="form-check-input" type="radio" name="Stability" id="F">
+                                      <label class="form-check-label" for="F">F</label>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="form-check form-check-inline">
+                                      <input class="form-check-input" type="radio" name="x" id="small" checked>
+                                      <label class="form-check-label" for="small">x < 1 km</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                      <input class="form-check-input" type="radio" name="x" id="big">
+                                      <label class="form-check-label" for="big">x > 1 km</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row m-1">
+                                <div class="col-md">
+                                    <div class="form-floating m-1">
+                                        <input type="text" id="H" name="H" class="form-control">
+                                        <label for="H">H:</label>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="form-floating m-1">
+                                        <input type="text" id="x2" name="x2" class="form-control">
+                                        <label for="x2">x2: </label>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="form-floating m-1">
+                                        <input type="text" id="y2" name="y2" class="form-control">
+                                        <label for="y2">y2:</label>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="form-floating m-1">
+                                        <input type="text" id="C1C2" name="C1C2" class="form-control">
+                                        <label for="C1C2">C1/C2:</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row m-1">
+                                
+                                <div class="col-md">
+                                    <div class="form-floating m-1">
+                                        <input type="text" id="low" name="low" class="form-control">
+                                        <label for="low">下界:</label>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="form-floating m-1">
+                                        <input type="text" id="up" name="up" class="form-control">
+                                        <label for="up">上界:</label>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="form-floating m-1">
+                                        <input type="text" id="eps" name="eps" class="form-control">
+                                        <label for="eps">精度:</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" id="btn" class="btn btn-outline-dark" onclick='Cal()'>calculate</button>
+                        </div>
+                    </div>
+                    <br>
+                    <h4 id="Answer"></h4>
+
+                </div>
+                
+            </section>
+
+            <section class="align-items-center">
+                <style>
+                    table th, td {
+                       text-align: center; 
+                    }
+                </style>
+                <table id="data" style="margin:auto; width: 67%;" class="table table-condensed table-bordered table-hover table-striped align-middle">
+                </table>
+            </section>
+        </div>
+
+        <script src="static/js/calculator.js"></script>
+    </body>
+</html>

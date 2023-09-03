@@ -29,6 +29,9 @@
         <script src="static/js/xlsx.full.min.js"></script>
         <script src="static/js/jszip.js"></script>
         <script src="static/js/jpalette.min.js"></script>
+        <!--script src="static/js/leaflet.textpath.js"></script-->
+        <script src="https://cdn.jsdelivr.net/npm/leaflet-textpath@1.2.0/leaflet.textpath.min.js"></script>
+
 
     </head>
 
@@ -37,6 +40,7 @@
             <div class="container">
                 <a class="navbar-brand" href="/">Home</a>
                 <a class="navbar-brand" href="/data">Data</a>
+                <a class="navbar-brand" href="/calculator">Calculator</a>
                 <a class="navbar-brand" href="/setting">Setting</a>
                 <ul id="main_nav" class="nav nav-pills ms-auto">
                     <li class="nav-item">
@@ -55,15 +59,30 @@
                     <div class="row">
                         <div id="map-input" class="col-sm">
                             <h3>Map</h3>
-                            <div class="form-floating m-3">
-                                <select id = "sensorID" name="sensorID" class="form-select">
-                                    <option value="pm2_5">PM2.5</option>
-                                    <option value="voc">VOC</option>
-                                    <option value="h2s">H2S</option>
-                                    <option value="nh3">NH3</option>
-                                </select>
-                                <label for="sensorID">Choose sensor:    </label>
+                            
+                            <div class="row m-1 mb-3 mt-3">
+                                <div class="col-md">
+                                    <div class="form-floating">
+                                        <select id = "sensorID" name="sensorID" class="form-select">
+                                            <option value="pm2_5">PM2.5</option>
+                                            <option value="voc">VOC</option>
+                                            <option value="h2s">H2S</option>
+                                            <option value="nh3">NH3</option>
+                                        </select>
+                                        <label for="sensorID">Choose sensor:    </label>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="form-floating">
+                                        <select id = "method" name="method" class="form-select">
+                                            <option value="cubic">Cubic</option>
+                                            <option value="Kriging">Kriging</option>
+                                        </select>
+                                        <label for="method">Choose method:    </label>
+                                    </div>
+                                </div>
                             </div>
+
                             <div class="form-floating m-3">
                                 <input type="text" id="time_start" name="time_start" class="form-control">
                                 <label for="time_start">Time frame start: </label>
@@ -72,13 +91,46 @@
                                 <input type="text" id="time_finish" name="time_finish" class="form-control">
                                 <label for="time_finish">Time frame finish:</label>
                             </div>
+
                             <div class="form-floating m-3">
-                                <input type="number" id="parts" name="parts" min="1" class="form-control">
-                                <label for="parts">等份: </label>
+                                <div class="form-floating">
+                                    <select id = "time_gap" name="time_gap" class="form-select">
+                                        <option value="15">15秒</option>
+                                        <option value="30">30秒</option>
+                                        <option value="60">60秒</option>
+                                    </select>
+                                    <label for="time_gap">時間間隔: </label>
+                                </div>
                             </div>
-                            <div class="form-floating m-3">
-                                <input type="text" id="levels" name="levels" class="form-control">
-                                <label for="levels">間距(Optional): 5, 10, 15, 20</label>
+
+                            <div class="row m-1 mb-3">
+                                <div class="col-md">
+                                    <div class="form-floating">
+                                        <input type="number" id="parts" name="parts" min="1" class="form-control">
+                                        <label for="parts">等份: </label>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="form-floating">
+                                        <input type="text" id="levels" name="levels" class="form-control">
+                                        <label for="levels">間距(Optional): 5, 10, 15</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row m-1  mb-3">
+                                <div class="col-md">
+                                    <div class="form-floating">
+                                        <input type="number" id="slope" name="slope" class="form-control">
+                                        <label for="slope">slope (default: 1): </label>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="form-floating">
+                                        <input type="number" id="nugget" name="nugget" class="form-control">
+                                        <label for="nugget">nugget (default: 0): </label>
+                                    </div>
+                                </div>
                             </div>
 
                             <button type="submit" id="btn" class="btn btn-outline-dark" onclick='Update_Bar()'>柱狀圖</button>
@@ -187,6 +239,13 @@
                     
                     <div class="modal-body">
                         <div class="form-floating m-3">
+                            <select id = "modal_method" name="modal_method" class="form-select">
+                                <option value="cubic">Cubic</option>
+                                <option value="Kriging">Kriging</option>
+                            </select>
+                            <label for="modal_method">Choose method:    </label>
+                        </div>
+                        <div class="form-floating m-3">
                             <input type="text" id="time_start_1" name="time_start_1" class="form-control">
                             <label for="time_start_1">Time frame start: </label>
                         </div>
@@ -194,13 +253,33 @@
                             <input type="text" id="time_finish_1" name="time_finish_1" class="form-control">
                             <label for="time_finish_1">Time frame finish:</label>
                         </div>
-                        <div class="form-floating m-3">
-                            <input type="number" id="modal_parts" name="modal_parts" min="1" class="form-control">
-                            <label for="modal_parts">等份: </label>
+                        <div class="row m-1">
+                            <div class="col-md">
+                                <div class="form-floating">
+                                    <input type="number" id="modal_parts" name="modal_parts" min="1" class="form-control">
+                                    <label for="modal_parts">等份: </label>
+                                </div>
+                            </div>
+                            <div class="col-md">
+                                <div class="form-floating">
+                                    <input type="text" id="modal_levels" name="modal_levels" class="form-control">
+                                    <label for="modal_levels">間距(Optional): 5, 10, 15, 20</label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-floating m-3">
-                            <input type="text" id="modal_levels" name="modal_levels" class="form-control">
-                            <label for="modal_levels">間距(Optional): 5, 10, 15, 20</label>
+                        <div class="row m-1">
+                            <div class="col-md">
+                                <div class="form-floating">
+                                    <input type="number" id="modal_slope" name="modal_slope" class="form-control">
+                                    <label for="modal_slope">slope(default: 1): </label>
+                                </div>
+                            </div>
+                            <div class="col-md">
+                                <div class="form-floating">
+                                    <input type="number" id="modal_nugget" name="modal_nugget" class="form-control">
+                                    <label for="modal_nugget">nugget(default: 0): </label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
