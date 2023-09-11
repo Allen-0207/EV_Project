@@ -80,6 +80,9 @@ function Update_Bar() {
     if(time_start == "" || time_finish == ""){
         alert("請選擇日期");
         return false;
+    }else if(ValidDateTime(time_start) || ValidDateTime(time_finish)){
+        alert("請輸入正確的日期格式 YYYY-MM-DD HH:MM");
+        return false;
     }
     
     if(isNaN(part)){
@@ -163,6 +166,9 @@ function Update_Contour() {
 
     if(time_start == "" || time_finish == ""){
         alert("請選擇日期");
+        return false;
+    }else if(ValidDateTime(time_start) || ValidDateTime(time_finish)){
+        alert("請輸入正確的日期格式 YYYY-MM-DD HH:MM");
         return false;
     }
 
@@ -893,6 +899,20 @@ $(document).ready(function () {
 });
 
 
+/* 
+valid date & time format
+    YYYY-MM-dd HH:MM
+*/
+function ValidDateTime(time) {
+    const regex = /^([0-9]{4})-(01|02|03|04|05|06|07|08|09|10|11|12)-([0-3][0-9])\s([0-1][0-9]):([0-5][0-9])$/gm;
+
+    if(time.match(regex) === null){
+        return true;
+    }
+
+    return false;
+}
+
 /*
 Input:
     x: 取顏色的值
@@ -933,10 +953,16 @@ function getColor(x, grades) {
     
 }
 
-//csv to array (file)
+/* 
+csv to array (file)
+if not choose time -> use all data
+else -> choose from time range
+*/
 function CSVtoArray(data) {
     let lines = data.split("\n");
     const sensor_name = (lines[0].split(",")[3]).replace(/\r?\n|\r/, '');
+
+    // Use all csv data
     if(document.getElementById("time_start_1").value == "" || document.getElementById("time_finish_1").value == ""){
         let Time = [];
         let sensor = [];
@@ -1001,9 +1027,6 @@ function csvJSON(csv) {
     }
   return [Time, WS, WD];
 }
-
-
-
 
 //Convert RGB to Hex
 function rgbToHex(r, g, b) {
